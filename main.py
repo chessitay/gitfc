@@ -33,9 +33,13 @@ def main():
         usage='gitfc "commit message" [date]',
     )
     parser.add_argument("-a", action="store_true", help="Stage all changes before committing")
-    parser.add_argument("message", help="Commit message")
+    parser.add_argument("--amend", action="store_true", help="Amend the previous commit with a new date")
+    parser.add_argument("message", nargs="?", default=None, help="Commit message")
     parser.add_argument("date", nargs="?", default=None, help='Optional date: "+15m", "-2d", "14:30", or "2026-04-01 14:30:00"')
     args = parser.parse_args()
+
+    if not args.amend and not args.message:
+        parser.error("message is required (unless using --amend)")
 
     if args.a:
         subprocess.run(["git", "add", "-A"])
@@ -45,8 +49,15 @@ def main():
     env = os.environ.copy()
     env["GIT_COMMITTER_DATE"] = date
 
-    result = subprocess.run(
-        ["git", "commit", "--date", date, "-m", args.message],
-        env=env,
-    )
+    cmd = ["git", "commit", "--date", date]
+    if args.amend:
+        cmd.append("--amend")
+        if args.message:
+            cmd += ["-m", args.message]
+        else:
+            cmd.append("--no-edit")
+    else:
+        cmd += ["-m", args.message]
+
+    result = subprocess.run(cmd, env=env)
     sys.exit(result.returncode)
