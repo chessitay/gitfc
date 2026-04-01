@@ -7,6 +7,9 @@ requires-python = ">=3.8"
 [project.scripts]
 gitfc = "main:main"
 
+[tool.setuptools]
+py-modules = ["main", "fc_queue"]
+
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
