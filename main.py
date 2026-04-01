@@ -121,6 +121,14 @@ def _build_queue_parser():
     batch_p.add_argument("--jitter", help='Random offset per push: "10m"')
     batch_p.add_argument("--start-at", help="When first push happens (default: now)")
 
+    # go (batch + run in one shot)
+    go_p = sub.add_parser("go", help="Schedule all pending items and start pushing")
+    go_p.add_argument("--at", help="When first push happens (default: now)")
+    go_p.add_argument("--every", required=True, help='Time between pushes: "30m", "2h"')
+    go_p.add_argument("--jitter", help='Random offset per push: "10m"')
+    go_p.add_argument("--daemon", action="store_true", help="Run in background")
+    go_p.add_argument("--poll", type=int, default=60, help="Seconds between checks (default: 60)")
+
     # stop / status
     sub.add_parser("stop", help="Stop background daemon")
     sub.add_parser("status", help="Show daemon and queue summary")

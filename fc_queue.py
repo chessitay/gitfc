@@ -486,12 +486,53 @@ def queue_batch(args):
     print(f"Scheduled {len(rows)} item(s) from {start.strftime('%H:%M')} to {last_push.strftime('%H:%M')}, {args.interval} apart{jitter_str}.")
 
 
+def queue_go(args):
+    """Schedule all pending items and start pushing — batch + run in one command."""
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id FROM queue WHERE status = 'committed' ORDER BY created_at ASC"
+    ).fetchall()
+
+    if not rows:
+        print("No pending items to schedule.")
+        conn.close()
+        return
+
+    interval_sec = parse_duration(args.every)
+    jitter_sec = parse_duration(args.jitter) if args.jitter else 0
+
+    if args.at:
+        start = datetime.strptime(parse_date(args.at), "%Y-%m-%d %H:%M:%S")
+    else:
+        start = datetime.now()
+
+    for i, row in enumerate(rows):
+        push_at = start + timedelta(seconds=interval_sec * i)
+        conn.execute(
+            "UPDATE queue SET push_at = ?, jitter_sec = ? WHERE id = ?",
+            (push_at.strftime("%Y-%m-%d %H:%M:%S"), jitter_sec, row["id"]),
+        )
+
+    conn.commit()
+    conn.close()
+
+    last_push = start + timedelta(seconds=interval_sec * (len(rows) - 1))
+    jitter_str = f" +/-{args.jitter} jitter" if args.jitter else ""
+    print(f"Scheduled {len(rows)} item(s) from {start.strftime('%H:%M')} to {last_push.strftime('%H:%M')}, {args.every} apart{jitter_str}.")
+    print()
+
+    if args.daemon:
+        _start_daemon(args.poll)
+    else:
+        _run_watch(args.poll)
+
+
 # --- dispatcher ---
 
 def handle_queue(args):
     action = args.queue_action
     if action is None:
-        print("Usage: gitfc queue <add|list|remove|clear|run|batch|stop|status>", file=sys.stderr)
+        print("Usage: gitfc queue <add|list|remove|clear|run|batch|go|stop|status>", file=sys.stderr)
         sys.exit(1)
 
     dispatch = {
@@ -503,6 +544,7 @@ def handle_queue(args):
         "clear": queue_clear,
         "run": queue_run,
         "batch": queue_batch,
+        "go": queue_go,
         "stop": queue_stop,
         "status": queue_status,
     }
