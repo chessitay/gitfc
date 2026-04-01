@@ -57,6 +57,7 @@ def main():
     parser.add_argument("--amend", action="store_true", help="Amend the previous commit with a new date")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show commit details after committing")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be committed without doing it")
+    parser.add_argument("-p", "--push", action="store_true", help="Push to remote after committing")
     parser.add_argument("message", nargs="?", default=None, help="Commit message")
     parser.add_argument("date", nargs="?", default=None, help='Optional date: "+15m", "-2d", "14:30", or "2026-04-01 14:30:00"')
     args = parser.parse_args()
@@ -95,5 +96,10 @@ def main():
 
     if result.returncode == 0 and args.verbose:
         subprocess.run(["git", "log", "--format=Hash:    %H%nAuthor:  %ai%nCommit:  %ci%nMessage: %s", "-1"])
+
+    if result.returncode == 0 and args.push:
+        push_result = subprocess.run(["git", "push"])
+        if push_result.returncode != 0:
+            sys.exit(push_result.returncode)
 
     sys.exit(result.returncode)
