@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: future-commit
+Version: 1.0.0
+Summary: Git commit with a custom date
+Requires-Python: >=3.8

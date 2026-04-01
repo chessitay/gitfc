@@ -1,0 +1,12 @@
+[project]
+name = "future-commit"
+version = "1.0.0"
+description = "Git commit with a custom date"
+requires-python = ">=3.8"
+
+[project.scripts]
+gitfc = "main:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
