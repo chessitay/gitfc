@@ -32,9 +32,13 @@ def main():
         description="Git commit with a custom date.",
         usage='gitfc "commit message" [date]',
     )
+    parser.add_argument("-a", action="store_true", help="Stage all changes before committing")
     parser.add_argument("message", help="Commit message")
     parser.add_argument("date", nargs="?", default=None, help='Optional date: "+15m", "-2d", "14:30", or "2026-04-01 14:30:00"')
     args = parser.parse_args()
+
+    if args.a:
+        subprocess.run(["git", "add", "-A"])
 
     date = parse_date(args.date)
 
