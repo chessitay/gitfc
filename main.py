@@ -6,6 +6,22 @@ import sys
 from datetime import datetime, timedelta
 
 
+def is_git_repo():
+    result = subprocess.run(["git", "rev-parse", "--git-dir"], capture_output=True)
+    return result.returncode == 0
+
+
+def validate_date(date_str):
+    formats = ["%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"]
+    for fmt in formats:
+        try:
+            datetime.strptime(date_str, fmt)
+            return True
+        except ValueError:
+            continue
+    return False
+
+
 def parse_date(value):
     now = datetime.now()
 
@@ -24,6 +40,11 @@ def parse_date(value):
     if re.fullmatch(r"\d{1,2}:\d{2}(:\d{2})?", value):
         return f"{now.strftime('%Y-%m-%d')} {value}"
 
+    if not validate_date(value):
+        print(f'Error: invalid date format "{value}"', file=sys.stderr)
+        print('Expected: "+15m", "-2d", "14:30", "2026-04-01", or "2026-04-01 14:30:00"', file=sys.stderr)
+        sys.exit(1)
+
     return value
 
 
@@ -38,6 +59,10 @@ def main():
     parser.add_argument("message", nargs="?", default=None, help="Commit message")
     parser.add_argument("date", nargs="?", default=None, help='Optional date: "+15m", "-2d", "14:30", or "2026-04-01 14:30:00"')
     args = parser.parse_args()
+
+    if not is_git_repo():
+        print("Error: not a git repository", file=sys.stderr)
+        sys.exit(1)
 
     if not args.amend and not args.message:
         parser.error("message is required (unless using --amend)")
