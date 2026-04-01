@@ -56,6 +56,7 @@ def main():
     parser.add_argument("-a", action="store_true", help="Stage all changes before committing")
     parser.add_argument("--amend", action="store_true", help="Amend the previous commit with a new date")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show commit details after committing")
+    parser.add_argument("--dry-run", action="store_true", help="Show what would be committed without doing it")
     parser.add_argument("message", nargs="?", default=None, help="Commit message")
     parser.add_argument("date", nargs="?", default=None, help='Optional date: "+15m", "-2d", "14:30", or "2026-04-01 14:30:00"')
     args = parser.parse_args()
@@ -84,6 +85,11 @@ def main():
             cmd.append("--no-edit")
     else:
         cmd += ["-m", args.message]
+
+    if args.dry_run:
+        print(f"Command: {' '.join(cmd)}")
+        print(f"Date:    {date}")
+        sys.exit(0)
 
     result = subprocess.run(cmd, env=env)
 
