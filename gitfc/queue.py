@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 from gitfc.git import create_commit, do_push, get_current_branch
 from gitfc.dates import parse_date, parse_duration, format_relative
+from gitfc.help import DIM, RESET
 
 
 def get_db_path():
@@ -115,7 +116,11 @@ def queue_list(args):
         if status == "committed":
             pending_count += 1
 
-        print(f"{r['id']:>{id_w}}  {msg:<35} {r['commit_date'][:16]:<20} {push_display:<28} {status:<10}")
+        line = f"{r['id']:>{id_w}}  {msg:<35} {r['commit_date'][:16]:<20} {push_display:<28} {status:<10}"
+        if status in ("pushed", "failed"):
+            print(f"{DIM}{line}{RESET}")
+        else:
+            print(line)
 
     print()
     if pending_count:
