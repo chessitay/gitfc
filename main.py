@@ -85,40 +85,126 @@ def do_push():
 
 QUEUE_SUBCOMMANDS = {"add", "list", "ls", "remove", "rm", "clear", "run", "stop", "status"}
 
+# --- ANSI colors ---
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+CYAN = "\033[36m"
+YELLOW = "\033[33m"
+GREEN = "\033[32m"
+
+
+def _print_main_help():
+    print(f"""
+{BOLD}gitfc{RESET} — Git commit with a custom date.
+
+{YELLOW}USAGE{RESET}
+  gitfc [flags] {DIM}"message"{RESET} {DIM}[date]{RESET}
+
+{YELLOW}FLAGS{RESET}
+  {GREEN}-a{RESET}             Stage all changes before committing (git add -A)
+  {GREEN}--amend{RESET}        Amend the previous commit instead of creating a new one
+  {GREEN}-v, --verbose{RESET}  Print commit details (hash, date, message) after committing
+  {GREEN}-p, --push{RESET}     Push to remote after committing
+  {GREEN}--dry-run{RESET}      Show the command and resolved date without committing
+
+{YELLOW}DATE FORMATS{RESET}
+  {CYAN}(nothing){RESET}              Current date and time
+  {CYAN}+15m{RESET}                   15 minutes from now
+  {CYAN}-2h{RESET}                    2 hours ago
+  {CYAN}+3d{RESET}                    3 days from now
+  {CYAN}14:30{RESET}                  Today at 14:30
+  {CYAN}2026-04-01{RESET}             That date at midnight
+  {CYAN}2026-04-01 14:30:00{RESET}    Exact date and time
+
+{YELLOW}EXAMPLES{RESET}
+  {DIM}${RESET} gitfc "my message"
+  {DIM}${RESET} gitfc "my message" "-2d"
+  {DIM}${RESET} gitfc -a "my message" "2026-03-15 10:00:00"
+  {DIM}${RESET} gitfc --amend "-1h"
+  {DIM}${RESET} gitfc --amend "new message" "2026-04-01"
+  {DIM}${RESET} gitfc -a -v -p "my message" "+30m"
+  {DIM}${RESET} gitfc --dry-run "my message" "2026-04-01 09:00:00"
+
+{YELLOW}QUEUE{RESET}
+  Batch-create commits locally and push them on a schedule.
+  Use {GREEN}gitfc queue --help{RESET} for details, or {GREEN}gitfc q{RESET} as shorthand.
+""")
+
+
+def _print_queue_help():
+    print(f"""
+{BOLD}gitfc queue{RESET} — Manage the commit push queue.
+
+  Commits are created immediately (locally), but the {BOLD}push{RESET} happens on a schedule.
+  Shorthand: {GREEN}gitfc q{RESET} instead of {GREEN}gitfc queue{RESET}.
+
+{YELLOW}COMMANDS{RESET}
+  {GREEN}add{RESET} "msg" [date]       Add a commit to the queue {DIM}(default when no subcommand){RESET}
+  {GREEN}list{RESET} | {GREEN}ls{RESET}              Show all queued items
+  {GREEN}remove{RESET} | {GREEN}rm{RESET} <id>       Remove an item by ID
+  {GREEN}clear{RESET}                  Remove all pending items
+  {GREEN}run{RESET} <interval> [jitter] Schedule and push pending items
+  {GREEN}stop{RESET}                   Stop the background daemon
+  {GREEN}status{RESET}                 Show daemon and queue summary
+
+{YELLOW}ADD OPTIONS{RESET}
+  {GREEN}--amend{RESET}                Amend the previous commit
+
+{YELLOW}RUN OPTIONS{RESET}
+  {GREEN}<interval>{RESET}             Time between pushes: {CYAN}30m{RESET}, {CYAN}2h{RESET}, {CYAN}1d{RESET}
+  {GREEN}[jitter]{RESET}               Random offset per push: {CYAN}5m{RESET}, {CYAN}10m{RESET}
+  {GREEN}--at{RESET} <time>            When the first push happens {DIM}(default: now){RESET}
+  {GREEN}--ids{RESET} <ids>            Comma-separated IDs in push order: {CYAN}2,1,3{RESET}
+  {GREEN}--daemon{RESET}               Run in the background
+  {GREEN}--poll{RESET} <sec>           Seconds between checks {DIM}(default: 60){RESET}
+
+{YELLOW}EXAMPLES{RESET}
+  {DIM}${RESET} gitfc queue "add user authentication"
+  {DIM}${RESET} gitfc queue "add input validation" "-1h"
+  {DIM}${RESET} gitfc queue list
+  {DIM}${RESET} gitfc queue run 30m 5m
+  {DIM}${RESET} gitfc queue run 30m 5m --at 14:00
+  {DIM}${RESET} gitfc queue run 30m --ids 3,1,2
+  {DIM}${RESET} gitfc queue run 30m 5m --daemon
+  {DIM}${RESET} gitfc queue status
+  {DIM}${RESET} gitfc queue stop
+""")
+
 
 def _build_queue_parser():
-    parser = argparse.ArgumentParser(prog="gitfc queue", description="Manage commit push queue")
+    parser = argparse.ArgumentParser(prog="gitfc queue", add_help=False)
     sub = parser.add_subparsers(dest="queue_action")
 
     # add (always stages all changes)
-    add_p = sub.add_parser("add", help="Add a commit to the push queue")
-    add_p.add_argument("--amend", action="store_true", help="Amend the previous commit")
-    add_p.add_argument("message", nargs="?", default=None, help="Commit message")
-    add_p.add_argument("date", nargs="?", default=None, help="Commit date")
+    add_p = sub.add_parser("add")
+    add_p.add_argument("--amend", action="store_true")
+    add_p.add_argument("message", nargs="?", default=None)
+    add_p.add_argument("date", nargs="?", default=None)
 
     # list
-    sub.add_parser("list", aliases=["ls"], help="Show queued items")
+    sub.add_parser("list", aliases=["ls"])
 
     # remove
-    rm_p = sub.add_parser("remove", aliases=["rm"], help="Remove item by ID")
-    rm_p.add_argument("id", type=int, help="Queue item ID")
+    rm_p = sub.add_parser("remove", aliases=["rm"])
+    rm_p.add_argument("id", type=int)
 
     # clear
-    clear_p = sub.add_parser("clear", help="Remove all pending items")
-    clear_p.add_argument("--force", action="store_true", help="Skip confirmation")
+    clear_p = sub.add_parser("clear")
+    clear_p.add_argument("--force", action="store_true")
 
     # run
-    run_p = sub.add_parser("run", help="Schedule and push all pending items")
-    run_p.add_argument("interval", help='Time between pushes: "30m", "2h"')
-    run_p.add_argument("jitter", nargs="?", default=None, help='Random offset per push: "5m", "10m"')
-    run_p.add_argument("--at", help='Start time (default: now): "14:00", "+1h"')
-    run_p.add_argument("--ids", help='Comma-separated IDs in push order: "2,1,3"')
-    run_p.add_argument("--daemon", action="store_true", help="Run in background")
-    run_p.add_argument("--poll", type=int, default=60, help="Seconds between checks (default: 60)")
+    run_p = sub.add_parser("run")
+    run_p.add_argument("interval")
+    run_p.add_argument("jitter", nargs="?", default=None)
+    run_p.add_argument("--at")
+    run_p.add_argument("--ids")
+    run_p.add_argument("--daemon", action="store_true")
+    run_p.add_argument("--poll", type=int, default=60)
 
     # stop / status
-    sub.add_parser("stop", help="Stop background daemon")
-    sub.add_parser("status", help="Show daemon and queue summary")
+    sub.add_parser("stop")
+    sub.add_parser("status")
 
     return parser
 
@@ -131,8 +217,13 @@ def main():
     # route "queue" / "q" to the queue subsystem before argparse sees positional args
     if len(sys.argv) > 1 and sys.argv[1] in ("queue", "q"):
         queue_args = sys.argv[2:]
+
+        if not queue_args or queue_args[0] in ("-h", "--help"):
+            _print_queue_help()
+            sys.exit(0)
+
         # shorthand: "gitfc queue 'msg'" -> "gitfc queue add 'msg'"
-        if queue_args and queue_args[0] not in QUEUE_SUBCOMMANDS:
+        if queue_args[0] not in QUEUE_SUBCOMMANDS:
             queue_args = ["add"] + queue_args
         queue_parser = _build_queue_parser()
         args = queue_parser.parse_args(queue_args)
@@ -140,21 +231,25 @@ def main():
         handle_queue(args)
         return
 
-    parser = argparse.ArgumentParser(
-        description="Git commit with a custom date.",
-        usage='gitfc "commit message" [date]',
-    )
-    parser.add_argument("-a", action="store_true", help="Stage all changes before committing")
-    parser.add_argument("--amend", action="store_true", help="Amend the previous commit with a new date")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Show commit details after committing")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be committed without doing it")
-    parser.add_argument("-p", "--push", action="store_true", help="Push to remote after committing")
-    parser.add_argument("message", nargs="?", default=None, help="Commit message")
-    parser.add_argument("date", nargs="?", default=None, help='Optional date: "+15m", "-2d", "14:30", or "2026-04-01 14:30:00"')
+    # intercept --help / -h for custom output
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        _print_main_help()
+        sys.exit(0)
+
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("-a", action="store_true")
+    parser.add_argument("--amend", action="store_true")
+    parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("-p", "--push", action="store_true")
+    parser.add_argument("message", nargs="?", default=None)
+    parser.add_argument("date", nargs="?", default=None)
     args = parser.parse_args()
 
     if not args.amend and not args.message:
-        parser.error("message is required (unless using --amend)")
+        print(f"{BOLD}Error:{RESET} message is required (unless using --amend)", file=sys.stderr)
+        print(f"Run {GREEN}gitfc --help{RESET} for usage.", file=sys.stderr)
+        sys.exit(2)
 
     date = parse_date(args.date)
 
