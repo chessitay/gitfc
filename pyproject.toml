@@ -10,6 +10,10 @@ gitfc = "gitfc.cli:main"
 [tool.setuptools]
 packages = ["gitfc"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
