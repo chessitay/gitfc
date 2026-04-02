@@ -5,10 +5,10 @@ description = "Git commit with a custom date"
 requires-python = ">=3.8"
 
 [project.scripts]
-gitfc = "main:main"
+gitfc = "gitfc.cli:main"
 
 [tool.setuptools]
-py-modules = ["main", "fc_queue"]
+packages = ["gitfc"]
 
 [build-system]
 requires = ["setuptools"]

@@ -1,2 +1,2 @@
 [console_scripts]
-gitfc = main:main
+gitfc = gitfc.cli:main
