@@ -33,7 +33,6 @@ def _build_queue_parser():
     run_p.add_argument("--at")
     run_p.add_argument("--ids")
 
-    sub.add_parser("stop")
     sub.add_parser("status")
 
     return parser

@@ -7,7 +7,7 @@ CYAN = "\033[36m"
 YELLOW = "\033[33m"
 GREEN = "\033[32m"
 
-QUEUE_SUBCOMMANDS = {"add", "list", "ls", "remove", "rm", "clear", "run", "stop", "status"}
+QUEUE_SUBCOMMANDS = {"add", "list", "ls", "remove", "rm", "clear", "run", "status"}
 
 
 def _print_main_help():
@@ -62,8 +62,7 @@ def _print_queue_help():
   {GREEN}clear{RESET}                  Remove all pending items
     {DIM}--reset              Delete all items (including pushed and failed){RESET}
   {GREEN}run{RESET} <interval> [jitter] Schedule and push pending items
-  {GREEN}stop{RESET}                   Stop the background daemon
-  {GREEN}status{RESET}                 Show daemon and queue summary
+  {GREEN}status{RESET}                 Show queue summary
 
 {YELLOW}ADD OPTIONS{RESET}
   {GREEN}--amend{RESET}                Amend the previous commit
@@ -73,8 +72,6 @@ def _print_queue_help():
   {GREEN}[jitter]{RESET}               Random offset per push: {CYAN}5m{RESET}, {CYAN}10m{RESET}
   {GREEN}--at{RESET} <time>            When the first push happens {DIM}(default: now){RESET}
   {GREEN}--ids{RESET} <ids>            Comma-separated IDs in push order: {CYAN}2,1,3{RESET}
-  {GREEN}--daemon{RESET}               Run in the background
-  {GREEN}--poll{RESET} <sec>           Seconds between checks {DIM}(default: 60){RESET}
 
 {YELLOW}EXAMPLES{RESET}
   {DIM}${RESET} gitfc queue "add user authentication"
@@ -83,7 +80,5 @@ def _print_queue_help():
   {DIM}${RESET} gitfc queue run 30m 5m
   {DIM}${RESET} gitfc queue run 30m 5m --at 14:00
   {DIM}${RESET} gitfc queue run 30m --ids 3,1,2
-  {DIM}${RESET} gitfc queue run 30m 5m --daemon
   {DIM}${RESET} gitfc queue status
-  {DIM}${RESET} gitfc queue stop
 """)

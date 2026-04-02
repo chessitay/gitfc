@@ -403,13 +403,23 @@ def queue_run(args):
         print(f"\n{pushed}/{len(rows)} item(s) pushed.")
 
 
+def queue_status(args):
+    conn = get_db()
+    counts = {}
+    for status in ("committed", "pushed", "failed"):
+        counts[status] = conn.execute(
+            "SELECT COUNT(*) FROM queue WHERE status = ?", (status,)
+        ).fetchone()[0]
+    conn.close()
+
+    print(f"Pending: {counts['committed']}  Pushed: {counts['pushed']}  Failed: {counts['failed']}")
+
+
 def handle_queue(args):
     action = args.queue_action
     if action is None:
-        print("Usage: gitfc queue <add|list|remove|clear|run|stop|status>", file=sys.stderr)
+        print("Usage: gitfc queue <add|list|remove|clear|run|status>", file=sys.stderr)
         sys.exit(1)
-
-    from gitfc.daemon import queue_stop, queue_status
 
     dispatch = {
         "add": queue_add,
@@ -419,7 +429,6 @@ def handle_queue(args):
         "rm": queue_remove,
         "clear": queue_clear,
         "run": queue_run,
-        "stop": queue_stop,
         "status": queue_status,
     }
 
