@@ -44,6 +44,9 @@ def create_commit(message, date, amend=False, stage_all=False):
     return hash_result.stdout.strip()
 
 
-def do_push():
-    result = subprocess.run(["git", "push"])
+def do_push(commit_hash=None, branch=None):
+    if commit_hash and branch:
+        result = subprocess.run(["git", "push", "origin", f"{commit_hash}:refs/heads/{branch}"])
+    else:
+        result = subprocess.run(["git", "push"])
     return result.returncode

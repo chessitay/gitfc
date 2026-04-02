@@ -211,7 +211,7 @@ def process_due_items():
         msg_short = r["message"][:40]
         print(f'[{timestamp}] Pushing #{r["id"]} "{msg_short}" ({r["commit_hash"][:7]})...', end=" ", flush=True)
 
-        rc = do_push()
+        rc = do_push(commit_hash=r["commit_hash"], branch=r["branch"])
         if rc != 0:
             conn.execute(
                 "UPDATE queue SET status = 'failed', error = ? WHERE id = ?",
