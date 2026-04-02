@@ -79,9 +79,9 @@ gitfc --dry-run "my message" "2026-04-01 09:00:00"
 
 ## Queue system
 
-The queue lets you batch-create commits locally and push them out over time with controlled spacing and jitter, so they look like natural commits.
+The queue lets you batch-create commits locally and push them all at once. Commit dates are already baked into each commit, so they look natural on the remote regardless of when you push.
 
-The idea: commits are created immediately (locally), but the **push** happens on a schedule.
+The idea: commits are created immediately (locally) with their target dates, then pushed together when you run the queue.
 
 ### Queue commands
 
@@ -92,9 +92,8 @@ The idea: commits are created immediately (locally), but the **push** happens on
 | `gitfc queue list` | Show all queued items |
 | `gitfc queue remove <id>` | Remove an item by ID |
 | `gitfc queue clear` | Remove all pending items |
-| `gitfc queue run <interval> [jitter]` | Schedule and push all pending items |
-| `gitfc queue stop` | Stop the background daemon |
-| `gitfc queue status` | Show daemon and queue summary |
+| `gitfc queue run [interval] [jitter]` | Push all pending items immediately |
+| `gitfc queue status` | Show queue summary |
 
 You can also use `gitfc q` instead of `gitfc queue`.
 
@@ -102,12 +101,12 @@ You can also use `gitfc q` instead of `gitfc queue`.
 
 | Option | What it does |
 |---|---|
-| `<interval>` | Time between pushes: `30m`, `2h`, `1d` |
-| `[jitter]` | Random offset per push: `5m`, `10m` (optional) |
-| `--at <time>` | When the first push happens (default: now) |
+| `[interval]` | Spacing for stored timestamps: `30m`, `2h`, `1d` (optional, metadata only) |
+| `[jitter]` | Random offset for timestamps: `5m`, `10m` (optional) |
+| `--at <time>` | Start time for stored timestamps (default: now) |
 | `--ids <ids>` | Comma-separated IDs in push order: `2,1,3` |
-| `--daemon` | Run in the background |
-| `--poll <sec>` | Seconds between checks (default: 60) |
+
+All items are pushed immediately regardless of interval. The interval/jitter/at options only affect the `push_at` timestamps stored as metadata.
 
 ### Queue examples
 
@@ -125,23 +124,17 @@ gitfc queue "add error handling" "-30m"
 # Check what's queued
 gitfc queue list
 
-# Push them out 30 minutes apart with 5 minutes of jitter
+# Push everything now
+gitfc queue run
+
+# Push with stored timestamps spaced 30m apart (metadata only)
 gitfc queue run 30m 5m
 
-# Same but start at 2pm
-gitfc queue run 30m 5m --at 14:00
-
 # Push in a specific order
-gitfc queue run 30m --ids 3,1,2
+gitfc queue run --ids 3,1,2
 
-# Run in the background
-gitfc queue run 30m 5m --daemon
-
-# Check on it
+# Check queue status
 gitfc queue status
-
-# Stop the daemon
-gitfc queue stop
 ```
 
 ## Testing

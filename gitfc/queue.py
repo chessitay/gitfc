@@ -246,7 +246,7 @@ def queue_run(args):
         rows = []
         for item_id in id_list:
             row = conn.execute(
-                "SELECT id FROM queue WHERE id = ? AND status = 'committed'",
+                "SELECT * FROM queue WHERE id = ? AND status = 'committed'",
                 (item_id,),
             ).fetchone()
             if not row:
@@ -256,7 +256,7 @@ def queue_run(args):
             rows.append(row)
     else:
         rows = conn.execute(
-            "SELECT id FROM queue WHERE status = 'committed' ORDER BY created_at ASC"
+            "SELECT * FROM queue WHERE status = 'committed' ORDER BY created_at ASC"
         ).fetchall()
 
     if not rows:
@@ -264,34 +264,94 @@ def queue_run(args):
         conn.close()
         return
 
-    interval_sec = parse_duration(args.interval)
-    jitter_sec = parse_duration(args.jitter) if args.jitter else 0
+    # Store push_at timestamps as metadata
+    if args.interval:
+        interval_sec = parse_duration(args.interval)
+        jitter_sec = parse_duration(args.jitter) if args.jitter else 0
 
-    if args.at:
-        start = datetime.strptime(parse_date(args.at), "%Y-%m-%d %H:%M:%S")
+        if args.at:
+            start = datetime.strptime(parse_date(args.at), "%Y-%m-%d %H:%M:%S")
+        else:
+            start = datetime.now()
+
+        for i, row in enumerate(rows):
+            push_at = start + timedelta(seconds=interval_sec * i)
+            if jitter_sec:
+                jitter = random.randint(-jitter_sec, jitter_sec)
+                push_at = push_at + timedelta(seconds=jitter)
+            conn.execute(
+                "UPDATE queue SET push_at = ?, jitter_sec = ? WHERE id = ?",
+                (push_at.strftime("%Y-%m-%d %H:%M:%S"), jitter_sec, row["id"]),
+            )
+        conn.commit()
+
+        last_push = start + timedelta(seconds=interval_sec * (len(rows) - 1))
+        jitter_str = f" +/-{args.jitter} jitter" if args.jitter else ""
+        print(f"Timestamps: {start.strftime('%H:%M')} to {last_push.strftime('%H:%M')}, {args.interval} apart{jitter_str}.")
     else:
-        start = datetime.now()
+        now = datetime.now()
+        for row in rows:
+            conn.execute(
+                "UPDATE queue SET push_at = ? WHERE id = ?",
+                (now.strftime("%Y-%m-%d %H:%M:%S"), row["id"]),
+            )
+        conn.commit()
 
-    for i, row in enumerate(rows):
-        push_at = start + timedelta(seconds=interval_sec * i)
-        conn.execute(
-            "UPDATE queue SET push_at = ?, jitter_sec = ? WHERE id = ?",
-            (push_at.strftime("%Y-%m-%d %H:%M:%S"), jitter_sec, row["id"]),
+    # Push all items immediately
+    current_branch = get_current_branch()
+    pushed = 0
+    for r in rows:
+        item = conn.execute("SELECT * FROM queue WHERE id = ?", (r["id"],)).fetchone()
+
+        if current_branch != item["branch"]:
+            conn.execute(
+                "UPDATE queue SET status = 'failed', error = ? WHERE id = ?",
+                (f"Branch mismatch: expected '{item['branch']}', on '{current_branch}'", item["id"]),
+            )
+            conn.commit()
+            print(f"#{item['id']} FAILED: branch mismatch ({item['branch']} != {current_branch})")
+            break
+
+        check = subprocess.run(
+            ["git", "cat-file", "-t", item["commit_hash"]],
+            capture_output=True,
         )
+        if check.returncode != 0:
+            conn.execute(
+                "UPDATE queue SET status = 'failed', error = ? WHERE id = ?",
+                (f"Commit {item['commit_hash'][:7]} no longer exists", item["id"]),
+            )
+            conn.commit()
+            print(f"#{item['id']} FAILED: commit {item['commit_hash'][:7]} not found")
+            break
 
-    conn.commit()
+        msg_short = item["message"][:40]
+        print(f'Pushing #{item["id"]} "{msg_short}" ({item["commit_hash"][:7]})...', end=" ", flush=True)
+
+        rc = do_push(commit_hash=item["commit_hash"], branch=item["branch"])
+        if rc != 0:
+            conn.execute(
+                "UPDATE queue SET status = 'failed', error = ? WHERE id = ?",
+                (f"git push exited with code {rc}", item["id"]),
+            )
+            conn.commit()
+            print("FAILED")
+            break
+
+        conn.execute(
+            "UPDATE queue SET status = 'pushed', pushed_at = ? WHERE id = ?",
+            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), item["id"]),
+        )
+        conn.commit()
+        pushed += 1
+        print("done")
+
     conn.close()
 
-    last_push = start + timedelta(seconds=interval_sec * (len(rows) - 1))
-    jitter_str = f" +/-{args.jitter} jitter" if args.jitter else ""
-    print(f"Scheduled {len(rows)} item(s) from {start.strftime('%H:%M')} to {last_push.strftime('%H:%M')}, {args.interval} apart{jitter_str}.")
-    print()
-
-    from gitfc.daemon import run_watch, start_daemon
-    if args.daemon:
-        start_daemon(args.poll)
+    if pushed == len(rows):
+        print(f"\nAll {pushed} item(s) pushed.")
     else:
-        run_watch(args.poll)
+        print(f"\n{pushed}/{len(rows)} item(s) pushed.")
 
 
 def handle_queue(args):

@@ -422,40 +422,45 @@ class TestQueueRun:
         queue_run(make_args(ids=None))
         assert "No pending items to run." in capsys.readouterr().out
 
-    @patch("gitfc.daemon.run_watch")
+    @patch("gitfc.queue.do_push", return_value=0)
+    @patch("gitfc.queue.subprocess.run", return_value=MagicMock(returncode=0))
+    @patch("gitfc.queue.get_current_branch", return_value="main")
     @patch("gitfc.queue.parse_duration", return_value=1800)
     @patch("gitfc.queue.datetime", FakeDatetime)
-    def test_schedules_all_items(self, mock_duration, mock_watch, mock_db, capsys):
+    def test_schedules_all_items(self, mock_duration, mock_branch, mock_subproc, mock_push, mock_db, capsys):
         for i in range(3):
             insert_row(mock_db, status="committed", created_at=f"2026-01-15 {8 + i:02d}:00:00")
         from gitfc.queue import queue_run
-        queue_run(make_args(ids=None, jitter=None, at=None, daemon=False))
+        queue_run(make_args(ids=None, jitter=None, at=None))
 
         rows = mock_db.execute("SELECT push_at FROM queue ORDER BY id").fetchall()
         assert rows[0]["push_at"] == "2026-01-15 12:00:00"
         assert rows[1]["push_at"] == "2026-01-15 12:30:00"
         assert rows[2]["push_at"] == "2026-01-15 13:00:00"
-        mock_watch.assert_called_once_with(60)
 
-    @patch("gitfc.daemon.run_watch")
+    @patch("gitfc.queue.do_push", return_value=0)
+    @patch("gitfc.queue.subprocess.run", return_value=MagicMock(returncode=0))
+    @patch("gitfc.queue.get_current_branch", return_value="main")
     @patch("gitfc.queue.parse_duration", side_effect=lambda v: {"30m": 1800, "5m": 300}[v])
     @patch("gitfc.queue.datetime", FakeDatetime)
-    def test_with_jitter(self, mock_duration, mock_watch, mock_db):
+    def test_with_jitter(self, mock_duration, mock_branch, mock_subproc, mock_push, mock_db):
         insert_row(mock_db, status="committed")
         from gitfc.queue import queue_run
-        queue_run(make_args(jitter="5m", ids=None, at=None, daemon=False))
+        queue_run(make_args(jitter="5m", ids=None, at=None))
         row = mock_db.execute("SELECT jitter_sec FROM queue WHERE id = 1").fetchone()
         assert row["jitter_sec"] == 300
 
-    @patch("gitfc.daemon.run_watch")
+    @patch("gitfc.queue.do_push", return_value=0)
+    @patch("gitfc.queue.subprocess.run", return_value=MagicMock(returncode=0))
+    @patch("gitfc.queue.get_current_branch", return_value="main")
     @patch("gitfc.queue.parse_duration", return_value=1800)
     @patch("gitfc.queue.datetime", FakeDatetime)
-    def test_with_ids_filter(self, mock_duration, mock_watch, mock_db):
+    def test_with_ids_filter(self, mock_duration, mock_branch, mock_subproc, mock_push, mock_db):
         id1 = insert_row(mock_db, status="committed", created_at="2026-01-15 08:00:00")
         id2 = insert_row(mock_db, status="committed", created_at="2026-01-15 09:00:00")
         id3 = insert_row(mock_db, status="committed", created_at="2026-01-15 10:00:00")
         from gitfc.queue import queue_run
-        queue_run(make_args(ids=f"{id3},{id1}", jitter=None, at=None, daemon=False))
+        queue_run(make_args(ids=f"{id3},{id1}", jitter=None, at=None))
 
         row3 = mock_db.execute("SELECT push_at FROM queue WHERE id = ?", (id3,)).fetchone()
         row1 = mock_db.execute("SELECT push_at FROM queue WHERE id = ?", (id1,)).fetchone()
@@ -473,36 +478,31 @@ class TestQueueRun:
         assert exc_info.value.code == 1
         assert "not found or not pending" in capsys.readouterr().err
 
-    @patch("gitfc.daemon.start_daemon")
-    @patch("gitfc.queue.parse_duration", return_value=1800)
-    @patch("gitfc.queue.datetime", FakeDatetime)
-    def test_daemon_mode(self, mock_duration, mock_start, mock_db):
-        insert_row(mock_db, status="committed")
-        from gitfc.queue import queue_run
-        queue_run(make_args(daemon=True, ids=None, jitter=None, at=None))
-        mock_start.assert_called_once_with(60)
-
-    @patch("gitfc.daemon.run_watch")
+    @patch("gitfc.queue.do_push", return_value=0)
+    @patch("gitfc.queue.subprocess.run", return_value=MagicMock(returncode=0))
+    @patch("gitfc.queue.get_current_branch", return_value="main")
     @patch("gitfc.queue.parse_date", return_value="2026-01-15 14:00:00")
     @patch("gitfc.queue.parse_duration", return_value=1800)
     @patch("gitfc.queue.datetime", FakeDatetime)
-    def test_with_at_flag(self, mock_duration, mock_parse, mock_watch, mock_db):
+    def test_with_at_flag(self, mock_duration, mock_parse, mock_branch, mock_subproc, mock_push, mock_db):
         insert_row(mock_db, status="committed")
         from gitfc.queue import queue_run
-        queue_run(make_args(at="14:00", ids=None, jitter=None, daemon=False))
+        queue_run(make_args(at="14:00", ids=None, jitter=None))
         row = mock_db.execute("SELECT push_at FROM queue WHERE id = 1").fetchone()
         assert row["push_at"] == "2026-01-15 14:00:00"
 
-    @patch("gitfc.daemon.run_watch")
+    @patch("gitfc.queue.do_push", return_value=0)
+    @patch("gitfc.queue.subprocess.run", return_value=MagicMock(returncode=0))
+    @patch("gitfc.queue.get_current_branch", return_value="main")
     @patch("gitfc.queue.parse_duration", return_value=1800)
     @patch("gitfc.queue.datetime", FakeDatetime)
-    def test_prints_schedule_summary(self, mock_duration, mock_watch, mock_db, capsys):
+    def test_prints_schedule_summary(self, mock_duration, mock_branch, mock_subproc, mock_push, mock_db, capsys):
         insert_row(mock_db, status="committed")
         insert_row(mock_db, status="committed", created_at="2026-01-15 09:30:00")
         from gitfc.queue import queue_run
-        queue_run(make_args(ids=None, jitter=None, at=None, daemon=False))
+        queue_run(make_args(ids=None, jitter=None, at=None))
         out = capsys.readouterr().out
-        assert "Scheduled 2 item(s)" in out
+        assert "Timestamps:" in out
         assert "12:00" in out
         assert "12:30" in out
         assert "30m apart" in out

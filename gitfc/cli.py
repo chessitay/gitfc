@@ -27,12 +27,10 @@ def _build_queue_parser():
     clear_p.add_argument("--force", action="store_true")
 
     run_p = sub.add_parser("run")
-    run_p.add_argument("interval")
+    run_p.add_argument("interval", nargs="?", default=None)
     run_p.add_argument("jitter", nargs="?", default=None)
     run_p.add_argument("--at")
     run_p.add_argument("--ids")
-    run_p.add_argument("--daemon", action="store_true")
-    run_p.add_argument("--poll", type=int, default=60)
 
     sub.add_parser("stop")
     sub.add_parser("status")
