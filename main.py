@@ -83,6 +83,9 @@ def do_push():
     return result.returncode
 
 
+QUEUE_SUBCOMMANDS = {"add", "list", "ls", "remove", "rm", "clear", "run", "stop", "status"}
+
+
 def _build_queue_parser():
     parser = argparse.ArgumentParser(prog="gitfc queue", description="Manage commit push queue")
     sub = parser.add_subparsers(dest="queue_action")
@@ -91,10 +94,6 @@ def _build_queue_parser():
     add_p = sub.add_parser("add", help="Add a commit to the push queue")
     add_p.add_argument("-a", action="store_true", help="Stage all changes before committing")
     add_p.add_argument("--amend", action="store_true", help="Amend the previous commit")
-    add_p.add_argument("--push-at", help='When to push (absolute): "2026-04-02 16:00"')
-    add_p.add_argument("--push-in", help='When to push (relative): "2h", "30m"')
-    add_p.add_argument("--jitter", help='Random offset: "10m", "1h"')
-    add_p.add_argument("--after", choices=["last"], help="Schedule after last queued item")
     add_p.add_argument("message", nargs="?", default=None, help="Commit message")
     add_p.add_argument("date", nargs="?", default=None, help="Commit date")
 
@@ -110,24 +109,13 @@ def _build_queue_parser():
     clear_p.add_argument("--force", action="store_true", help="Skip confirmation")
 
     # run
-    run_p = sub.add_parser("run", help="Process due items")
-    run_p.add_argument("--watch", action="store_true", help="Keep running, check periodically")
+    run_p = sub.add_parser("run", help="Schedule and push all pending items")
+    run_p.add_argument("interval", help='Time between pushes: "30m", "2h"')
+    run_p.add_argument("jitter", nargs="?", default=None, help='Random offset per push: "5m", "10m"')
+    run_p.add_argument("--at", help='Start time (default: now): "14:00", "+1h"')
+    run_p.add_argument("--ids", help='Comma-separated IDs in push order: "2,1,3"')
     run_p.add_argument("--daemon", action="store_true", help="Run in background")
     run_p.add_argument("--poll", type=int, default=60, help="Seconds between checks (default: 60)")
-
-    # batch
-    batch_p = sub.add_parser("batch", help="Set push times for pending items")
-    batch_p.add_argument("--interval", required=True, help='Time between pushes: "30m", "2h"')
-    batch_p.add_argument("--jitter", help='Random offset per push: "10m"')
-    batch_p.add_argument("--start-at", help="When first push happens (default: now)")
-
-    # go (batch + run in one shot)
-    go_p = sub.add_parser("go", help="Schedule all pending items and start pushing")
-    go_p.add_argument("--at", help="When first push happens (default: now)")
-    go_p.add_argument("--every", required=True, help='Time between pushes: "30m", "2h"')
-    go_p.add_argument("--jitter", help='Random offset per push: "10m"')
-    go_p.add_argument("--daemon", action="store_true", help="Run in background")
-    go_p.add_argument("--poll", type=int, default=60, help="Seconds between checks (default: 60)")
 
     # stop / status
     sub.add_parser("stop", help="Stop background daemon")
@@ -143,8 +131,12 @@ def main():
 
     # route "queue" / "q" to the queue subsystem before argparse sees positional args
     if len(sys.argv) > 1 and sys.argv[1] in ("queue", "q"):
+        queue_args = sys.argv[2:]
+        # shorthand: "gitfc queue 'msg'" -> "gitfc queue add 'msg'"
+        if queue_args and queue_args[0] not in QUEUE_SUBCOMMANDS:
+            queue_args = ["add"] + queue_args
         queue_parser = _build_queue_parser()
-        args = queue_parser.parse_args(sys.argv[2:])
+        args = queue_parser.parse_args(queue_args)
         from fc_queue import handle_queue
         handle_queue(args)
         return
