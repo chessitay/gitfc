@@ -60,6 +60,7 @@ def _print_queue_help():
   {GREEN}list{RESET} | {GREEN}ls{RESET}              Show all queued items
   {GREEN}remove{RESET} | {GREEN}rm{RESET} <id>       Remove an item by ID
   {GREEN}clear{RESET}                  Remove all pending items
+    {DIM}--reset              Delete all items (including pushed and failed){RESET}
   {GREEN}run{RESET} <interval> [jitter] Schedule and push pending items
   {GREEN}stop{RESET}                   Stop the background daemon
   {GREEN}status{RESET}                 Show daemon and queue summary

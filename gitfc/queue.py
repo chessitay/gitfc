@@ -147,6 +147,25 @@ def queue_remove(args):
 
 def queue_clear(args):
     conn = get_db()
+
+    if args.reset:
+        count = conn.execute("SELECT COUNT(*) FROM queue").fetchone()[0]
+        if count == 0:
+            print("Queue is already empty.")
+            conn.close()
+            return
+        if not args.force:
+            answer = input(f"Delete ALL {count} item(s) from queue (including pushed and failed)? [y/N] ")
+            if answer.lower() != "y":
+                print("Cancelled.")
+                conn.close()
+                return
+        conn.execute("DELETE FROM queue")
+        conn.commit()
+        conn.close()
+        print(f"Reset queue: deleted {count} item(s).")
+        return
+
     count = conn.execute(
         "SELECT COUNT(*) FROM queue WHERE status IN ('committed')"
     ).fetchone()[0]

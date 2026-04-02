@@ -25,6 +25,7 @@ def _build_queue_parser():
 
     clear_p = sub.add_parser("clear")
     clear_p.add_argument("--force", action="store_true")
+    clear_p.add_argument("--reset", action="store_true")
 
     run_p = sub.add_parser("run")
     run_p.add_argument("interval", nargs="?", default=None)
