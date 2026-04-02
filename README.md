@@ -144,4 +144,39 @@ gitfc queue status
 gitfc queue stop
 ```
 
-**Disclaimer:** AI was used to generate a big part of this tool.
+## Testing
+
+The project includes unit tests for the queue module (53 tests covering all queue operations).
+
+### Setup
+
+```
+pip install pytest
+```
+
+### Run
+
+```
+python3 -m pytest tests/ -v
+```
+
+Or add a `test` target via make:
+
+```
+make test
+```
+
+### What's tested
+
+| Area | Tests |
+|---|---|
+| `get_db_path` / `get_db` | DB path resolution, schema creation, WAL mode |
+| `queue add` | Success, amend, missing message, commit failure |
+| `queue list` | Empty queue, message truncation, status ordering, relative time |
+| `queue remove` | Success, not found, already pushed, failed items |
+| `queue clear` | Force flag, confirmation prompt, pushed item preservation |
+| `process_due_items` | Scheduling, jitter, branch mismatch, missing commit, push failure |
+| `queue run` | Interval scheduling, jitter, `--ids` filter, `--at` flag, daemon mode |
+| `handle_queue` | Dispatch, aliases (`ls`, `rm`), unknown action |
+
+**Disclaimer:** AI was used to generate a big part of this tool (and wrote all of the unit tests).
