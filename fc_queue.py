@@ -11,8 +11,6 @@ from datetime import datetime, timedelta
 from main import create_commit, do_push, get_current_branch, parse_date
 
 
-# --- database ---
-
 def get_db_path():
     result = subprocess.run(["git", "rev-parse", "--git-dir"], capture_output=True, text=True)
     git_dir = result.stdout.strip()
@@ -45,8 +43,6 @@ def get_db():
     conn.commit()
     return conn
 
-
-# --- helpers ---
 
 def parse_duration(value):
     """Convert '10m', '2h', '1d' to seconds."""
@@ -103,8 +99,6 @@ def is_daemon_running():
         os.remove(pid_path)
         return False, None
 
-
-# --- queue operations ---
 
 def queue_add(args):
     conn = get_db()
@@ -433,8 +427,6 @@ def queue_status(args):
 
     print(f"Pending: {counts['committed']}  Pushed: {counts['pushed']}  Failed: {counts['failed']}")
 
-
-# --- dispatcher ---
 
 def handle_queue(args):
     action = args.queue_action

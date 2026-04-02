@@ -141,7 +141,6 @@ def main():
         handle_queue(args)
         return
 
-    # --- direct commit (original behavior) ---
     parser = argparse.ArgumentParser(
         description="Git commit with a custom date.",
         usage='gitfc "commit message" [date]',
