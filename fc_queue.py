@@ -110,7 +110,7 @@ def queue_add(args):
     date = parse_date(args.date)
     branch = get_current_branch()
 
-    commit_hash = create_commit(args.message, date, amend=args.amend, stage_all=args.a)
+    commit_hash = create_commit(args.message, date, amend=args.amend, stage_all=True)
     if not commit_hash:
         print("Error: commit failed", file=sys.stderr)
         sys.exit(1)
@@ -125,7 +125,7 @@ def queue_add(args):
             branch,
             commit_hash,
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            int(args.a),
+            1,
             int(args.amend),
         ),
     )

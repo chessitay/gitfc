@@ -90,9 +90,8 @@ def _build_queue_parser():
     parser = argparse.ArgumentParser(prog="gitfc queue", description="Manage commit push queue")
     sub = parser.add_subparsers(dest="queue_action")
 
-    # add
+    # add (always stages all changes)
     add_p = sub.add_parser("add", help="Add a commit to the push queue")
-    add_p.add_argument("-a", action="store_true", help="Stage all changes before committing")
     add_p.add_argument("--amend", action="store_true", help="Amend the previous commit")
     add_p.add_argument("message", nargs="?", default=None, help="Commit message")
     add_p.add_argument("date", nargs="?", default=None, help="Commit date")
