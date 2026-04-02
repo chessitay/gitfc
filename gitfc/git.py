@@ -44,6 +44,48 @@ def create_commit(message, date, amend=False, stage_all=False):
     return hash_result.stdout.strip()
 
 
+def rewrite_commit_date(commit_hash, new_date, parent_remap=None):
+    """Rewrite a commit with a new date, remapping parents if needed.
+    Returns the new commit hash."""
+    # get tree and parents from the original commit
+    result = subprocess.run(
+        ["git", "cat-file", "-p", commit_hash],
+        capture_output=True, text=True,
+    )
+    tree = None
+    parents = []
+    for line in result.stdout.split("\n"):
+        if line.startswith("tree "):
+            tree = line.split()[1]
+        elif line.startswith("parent "):
+            parents.append(line.split()[1])
+        elif line == "":
+            break
+
+    # get the original commit message
+    msg_result = subprocess.run(
+        ["git", "log", "-1", "--format=%B", commit_hash],
+        capture_output=True, text=True,
+    )
+    message = msg_result.stdout.rstrip("\n")
+
+    # remap parents if any were rewritten earlier in the chain
+    if parent_remap:
+        parents = [parent_remap.get(p, p) for p in parents]
+
+    env = os.environ.copy()
+    env["GIT_AUTHOR_DATE"] = new_date
+    env["GIT_COMMITTER_DATE"] = new_date
+
+    cmd = ["git", "commit-tree", tree]
+    for p in parents:
+        cmd += ["-p", p]
+    cmd += ["-m", message]
+
+    new = subprocess.run(cmd, env=env, capture_output=True, text=True)
+    return new.stdout.strip()
+
+
 def do_push(commit_hash=None, branch=None):
     if commit_hash and branch:
         result = subprocess.run(["git", "push", "origin", f"{commit_hash}:refs/heads/{branch}"])

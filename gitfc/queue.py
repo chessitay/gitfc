@@ -5,7 +5,7 @@ import subprocess
 import sys
 from datetime import datetime, timedelta
 
-from gitfc.git import create_commit, do_push, get_current_branch
+from gitfc.git import create_commit, do_push, get_current_branch, rewrite_commit_date
 from gitfc.dates import parse_date, parse_duration, format_relative
 from gitfc.help import DIM, RESET
 
@@ -296,6 +296,36 @@ def queue_run(args):
                 (now.strftime("%Y-%m-%d %H:%M:%S"), row["id"]),
             )
         conn.commit()
+
+    # Rewrite commit dates to match push_at schedule
+    if args.interval:
+        hash_remap = {}
+        for row in rows:
+            item = conn.execute("SELECT * FROM queue WHERE id = ?", (row["id"],)).fetchone()
+            new_hash = rewrite_commit_date(
+                item["commit_hash"], item["push_at"], parent_remap=hash_remap
+            )
+            hash_remap[item["commit_hash"]] = new_hash
+            conn.execute(
+                "UPDATE queue SET commit_hash = ?, commit_date = ? WHERE id = ?",
+                (new_hash, item["push_at"], item["id"]),
+            )
+        conn.commit()
+
+        # update branch to point to the last rewritten commit
+        last_old = rows[-1]["commit_hash"]
+        last_new = hash_remap[last_old]
+        branch = rows[-1]["branch"]
+        subprocess.run(["git", "update-ref", f"refs/heads/{branch}", last_new])
+
+        # re-fetch rows with updated hashes
+        if args.ids:
+            id_list = [int(x.strip()) for x in args.ids.split(",")]
+            rows = [conn.execute("SELECT * FROM queue WHERE id = ?", (i,)).fetchone() for i in id_list]
+        else:
+            rows = conn.execute(
+                "SELECT * FROM queue WHERE status = 'committed' ORDER BY created_at ASC"
+            ).fetchall()
 
     # Push all items immediately
     current_branch = get_current_branch()
