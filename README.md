@@ -2,6 +2,8 @@
 
 A simple CLI tool for making git commits with a custom date, and a queue system for scheduling pushes over time.
 
+![gitfc demo](assets/hero.gif)
+
 ## Installation
 
 Clone the repo and run:
@@ -81,7 +83,11 @@ gitfc --dry-run "my message" "2026-04-01 09:00:00"
 
 The queue lets you batch-create commits locally and push them all at once. Commit dates are already baked into each commit, so they look natural on the remote regardless of when you push.
 
-The idea: commits are created immediately (locally) with their target dates, then pushed together when you run the queue.
+![Queue workflow](assets/queue-simple.gif)
+
+The idea: commits are created immediately (locally) with their target dates, then pushed together when you run the queue. You can also backdate each commit:
+
+![Queue with custom dates](assets/queue.gif)
 
 ### Queue commands
 
