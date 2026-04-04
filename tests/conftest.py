@@ -60,6 +60,7 @@ def make_args(**overrides):
         date=None,
         amend=False,
         force=False,
+        reset=False,
         id=1,
         ids=None,
         interval="30m",

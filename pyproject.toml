@@ -1,8 +1,20 @@
 [project]
-name = "future-commit"
-version = "1.0.0"
+name = "gitfc"
+version = "1.2.6"
 description = "Git commit with a custom date"
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.8"
+authors = [{ name = "chessitay" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+
+[project.urls]
+Homepage = "https://github.com/chessitay/gitfc"
+Repository = "https://github.com/chessitay/gitfc"
 
 [project.scripts]
 gitfc = "gitfc.cli:main"

@@ -1,11 +1,35 @@
+import os
+import sys
 
 
-BOLD = "\033[1m"
-DIM = "\033[2m"
-RESET = "\033[0m"
-CYAN = "\033[36m"
-YELLOW = "\033[33m"
-GREEN = "\033[32m"
+def _colors_supported():
+    if not hasattr(sys.stdout, "isatty") or not sys.stdout.isatty():
+        return False
+    if os.name == "nt":
+        # Windows 10+ supports ANSI via VT100 mode; try to enable it
+        try:
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            # STD_OUTPUT_HANDLE = -11, ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+            handle = kernel32.GetStdHandle(-11)
+            mode = ctypes.c_ulong()
+            kernel32.GetConsoleMode(handle, ctypes.byref(mode))
+            kernel32.SetConsoleMode(handle, mode.value | 0x0004)
+            return True
+        except Exception:
+            return False
+    return True
+
+
+if _colors_supported():
+    BOLD = "\033[1m"
+    DIM = "\033[2m"
+    RESET = "\033[0m"
+    CYAN = "\033[36m"
+    YELLOW = "\033[33m"
+    GREEN = "\033[32m"
+else:
+    BOLD = DIM = RESET = CYAN = YELLOW = GREEN = ""
 
 QUEUE_SUBCOMMANDS = {"add", "list", "ls", "remove", "rm", "clear", "run", "status"}
 
